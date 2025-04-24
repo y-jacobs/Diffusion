@@ -6,6 +6,10 @@ import torch.nn.functional as F
 import random
 import numpy as np
 from torchvision import datasets, transforms
+import matplotlib
+matplotlib.use('TkAgg')  # Use a suitable backend here (e.g., 'TkAgg', 'Qt5Agg', etc.)
+import matplotlib.pyplot as plt
+
 
 # Set random seed for reproducibility
 def set_seed(seed):
@@ -17,6 +21,8 @@ def set_seed(seed):
 set_seed(42)
 
 
+
+
 # load fashion mnist dataset
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -26,4 +32,5 @@ train_dataset = datasets.FashionMNIST(root='./data', train=True, download=True, 
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True)
 test_dataset = datasets.FashionMNIST(root='./data', train=False, download=True, transform=transform)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=64, shuffle=False)
+
 
