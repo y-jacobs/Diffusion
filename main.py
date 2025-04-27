@@ -9,6 +9,7 @@ from torchvision import datasets, transforms
 import matplotlib
 matplotlib.use('TkAgg')  # Use a suitable backend here (e.g., 'TkAgg', 'Qt5Agg', etc.)
 import matplotlib.pyplot as plt
+from model import UNet
 
 
 # Set random seed for reproducibility
@@ -34,3 +35,56 @@ test_dataset = datasets.FashionMNIST(root='./data', train=False, download=True, 
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=64, shuffle=False)
 
 
+model = UNet(in_channels=1, out_channels=1)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+num_epochs = 5
+# Training loop
+for epoch in range(num_epochs):
+    model.train()
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
+        optimizer.zero_grad()
+        output = model(data)
+        loss = criterion(output, data)
+        loss.backward()
+        optimizer.step()
+        if batch_idx % 100 == 0:
+            print(f'Epoch: {epoch}, Batch: {batch_idx}, Loss: {loss.item()}')
+# Save the model
+torch.save(model.state_dict(), 'unet_fashion_mnist.pth')
+# Load the model
+model = UNet(in_channels=1, out_channels=1)
+model.load_state_dict(torch.load('unet_fashion_mnist.pth'))
+model.eval()
+# Test the model
+test_loss = 0
+with torch.no_grad():
+    for data, target in test_loader:
+        data, target = data.to(device), target.to(device)
+        output = model(data)
+        test_loss += criterion(output, data).item()
+test_loss /= len(test_loader.dataset)
+print(f'Test Loss: {test_loss}')
+# Visualize some results
+def visualize_results(model, test_loader):
+    model.eval()
+    with torch.no_grad():
+        for data, target in test_loader:
+            data = data.to(device)
+            output = model(data)
+            break  # Just visualize the first batch
+    # Convert to numpy for visualization
+    data = data.cpu().numpy()
+    output = output.cpu().numpy()
+    # Plot original and reconstructed images
+    fig, axes = plt.subplots(2, 8, figsize=(16, 4))
+    for i in range(8):
+        axes[0, i].imshow(data[i][0], cmap='gray')
+        axes[0, i].axis('off')
+        axes[1, i].imshow(output[i][0], cmap='gray')
+        axes[1, i].axis('off')
+    plt.show()
+visualize_results(model, test_loader)
