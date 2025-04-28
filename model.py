@@ -37,7 +37,6 @@ class UNet(nn.Module):
         enc2 = self.encoder2(enc1)
         enc3 = self.encoder3(enc2)
         enc4 = self.encoder4(enc3)
-
         # Bottleneck
         bottleneck = self.bottleneck(enc4)
 
