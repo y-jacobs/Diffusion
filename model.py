@@ -42,6 +42,7 @@ class UNet(nn.Module):
         bottleneck = self.bottleneck(enc4)
 
         # Decoder
+
         dec4 = self.decoder4(bottleneck)
         dec4 = torch.cat((dec4, enc4), dim=1)
         dec3 = self.decoder3(dec4)
