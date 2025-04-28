@@ -36,6 +36,7 @@ test_dataset = datasets.FashionMNIST(root='./data', train=False, download=True, 
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=64, shuffle=False)
 
 
+
 model = UNet(in_channels=1, out_channels=1)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
@@ -46,6 +47,8 @@ num_epochs = 5
 for epoch in range(num_epochs):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+        print(f"Epoch: {epoch}, Batch: {batch_idx}, Data shape: {data.shape}, Target shape: {target.shape}")
+
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
