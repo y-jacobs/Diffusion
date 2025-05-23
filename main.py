@@ -16,6 +16,7 @@ from model import UNet
 from utils import add_noise, load_transformed_fashionMNIST, q, reverse_q
 
 
+
 def plot_sample(images):
     plt.figure(figsize=(16, 1))
     for i in range(5):
