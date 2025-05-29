@@ -10,11 +10,13 @@ from torch.optim import Adam
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib
+
+import utils
+
 matplotlib.use('TkAgg')  # or 'QtAgg' if you installed PyQt5
 import matplotlib.pyplot as plt
 from model import UNet
-from utils import add_noise, load_transformed_fashionMNIST, q, reverse_q
-
+from utils import add_noise, load_transformed_fashionMNIST
 
 
 def plot_sample(images):
@@ -26,20 +28,28 @@ def plot_sample(images):
         plt.axis("off")
     plt.show()
 
-def test_model(model):
-    plt.figure(figsize=(8, 8))
-    plt.axis("off")
-    # Noise to generate images from
-    x_t = torch.randn((1, IMG_CH, IMG_SIZE, IMG_SIZE), device=device)
 
-    # Go from T to 0 removing and adding noise until t = 0
-    for i in range(0, T)[::-1]:
-        t = torch.full((1,), i, device=device)
-        e_t = model(x_t, t)  # Predicted noise
-        x_t = reverse_q(x_t, t, e_t, B, pred_noise_coeff, sqrt_a_inv)
-        plt.subplot(1, T+1, i+1)
-        plt.axis('off')
-
+# def test_model(model):
+#     model.eval()
+#     plt.figure(figsize=(8, 8))
+#     plt.axis("off")
+#
+#     x = torch.randn(5, IMG_CH, IMG_SIZE, IMG_SIZE).to(device)
+#
+#     with torch.no_grad():
+#         for t_val in reversed(range(T)):
+#             t_batch = torch.full((x.size(0),), t_val, device=device, dtype=torch.long)  # [B]
+#             noise_pred = model(x, t_batch.unsqueeze(-1).float())
+#             x = reverse_q(x, t_batch, noise_pred, B, pred_noise_coeff, sqrt_a_inv)
+#
+#     for i in range(5):
+#         plt.subplot(1, 5, i + 1)
+#         img = x[i].detach().cpu().squeeze().numpy()
+#         plt.imshow(img, cmap='gray')
+#         plt.axis("off")
+#
+#     plt.savefig("test_model.png", bbox_inches='tight', pad_inches=0.1)
+#     plt.show()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.is_available()
@@ -69,30 +79,28 @@ a_bar = torch.cumprod(a, dim=0)
 sqrt_a_bar = torch.sqrt(a_bar)  # Mean Coefficient
 sqrt_one_minus_a_bar = torch.sqrt(1 - a_bar) # St. Dev. Coefficient
 
-
+ddpm = utils.DDPM(B, device)
 
 
 data = load_transformed_fashionMNIST()
 dataloader = DataLoader(data, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
 
-model = UNet(IMG_CH, IMG_SIZE)
+model = UNet(IMG_SIZE, IMG_CH, T)
 print("Num params: ", sum(p.numel() for p in model.parameters()))
+model.to(device)
 
 optimizer = Adam(model.parameters(), lr=0.0001)
-epochs = 3
+epochs = 5
 
 model.train()
 for epoch in range(epochs):
     for step, batch in enumerate(dataloader):
         optimizer.zero_grad()
 
-        t = torch.randint(0, T, (BATCH_SIZE,), device=device)
-        images = batch[0].to(device)
-
-        images_noisy, noise = q(images, t, sqrt_a_bar, sqrt_one_minus_a_bar)
-        noise_pred = model(images_noisy)
-        loss = F.mse_loss(noise_pred, noise)
+        t = torch.randint(0, T, (BATCH_SIZE,), device=device).float()
+        x = batch[0].to(device)
+        loss = ddpm.get_loss(model, x, t)
         loss.backward()
         optimizer.step()
 
@@ -101,7 +109,11 @@ for epoch in range(epochs):
             # plot_sample(images_pred)
 
 
-sqrt_a_inv = torch.sqrt(1 / a)
-pred_noise_coeff = (1 - a) / torch.sqrt(1 - a_bar)
-
-test_model(model)
+model.eval()
+plt.figure(figsize=(8,8))
+ncols = 3 # Should evenly divide T
+fig, axs = plt.subplots(10, ncols, figsize=(ncols * 3, 10 * 3))
+for _ in range(10):
+    ddpm.sample_images(model, IMG_CH, IMG_SIZE, ncols)
+plt.tight_layout()
+plt.show()
